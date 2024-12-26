@@ -74,13 +74,31 @@ export const getChat = async (req, res) => {
 
 export const addChat = async (req, res) => {
   const tokenUserId = req.userId;
+  const receiverId = req.body.receiverId;
+
   try {
-    const newChat = await prisma.chat.create({
-      data: {
-        userIDs: [tokenUserId, req.body.receiverId],
+    // Check if a chat already exists between the two users
+    const existingChat = await prisma.chat.findFirst({
+      where: {
+        userIDs: {
+          hasEvery: [tokenUserId, receiverId], // Ensure both userIDs are present
+        },
       },
     });
-    res.status(200).json(newChat);
+
+    // If a chat already exists, return it
+    if (existingChat) {
+      return res.status(200).json(existingChat);
+    }
+
+    // If no chat exists, create a new one
+    const newChat = await prisma.chat.create({
+      data: {
+        userIDs: [tokenUserId, receiverId],
+      },
+    });
+
+    return res.status(200).json(newChat); // Return the newly created chat
   } catch (err) {
     console.log(err);
     res.status(500).json({ message: "Failed to add chat!" });
